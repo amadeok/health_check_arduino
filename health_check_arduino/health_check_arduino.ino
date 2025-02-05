@@ -94,10 +94,33 @@ void loop() {
   }
 }
 
+void splitString(String input, int maxLength) {
+    int start = 0;
+      lcd.setCursor(0, 0);
+    
+    while (start < input.length()) {
+        int end = start + maxLength;
+
+        if (end >= input.length()) {  // Last chunk
+            lcd.setCursor(0, 1);
+            lcd.print(input.substring(start));
+            break;
+        }
+
+        int lastSpace = input.lastIndexOf(' ', end);
+        if (lastSpace < start) {  // No space found in the current chunk
+            lastSpace = end;  // Force split at maxLength
+        }
+
+        lcd.print(input.substring(start, lastSpace));
+        start = lastSpace + 1;
+    }
+}
+
 void askQuestion() {
   lcd.clear();
   if (questionIndex < totalQuestions) {
-    lcd.print(questions[questionIndex].text);
+    splitString(questions[questionIndex].text, 16);
   } else {
     displayResult();
   }
