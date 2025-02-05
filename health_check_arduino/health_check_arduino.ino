@@ -29,7 +29,7 @@ struct Question {
 Question questions[] = {
   { "Do you have a fever?", 3, 0 },
   { "Do you have a headache?", 1, 0 },
-  { "Are you experiencing nausea?", 2, 0 },
+  { "Do you have nausea?", 2, 0 },
   { "Do you feel unusually tired?", 1, 0 }
 };
 
@@ -97,7 +97,7 @@ void loop() {
 void splitString(String input, int maxLength) {
     int start = 0;
       lcd.setCursor(0, 0);
-    
+
     while (start < input.length()) {
         int end = start + maxLength;
 
