@@ -15,35 +15,33 @@ const int resetButton = 2;
 int questionIndex = 0;
 bool startCheckup = false;
 int healthScore = 0;
-String solutions = "";
 
 struct Question {
-  String text;
+  char* text;
   int yesWeight;
   int noWeight;
-  String solution;
+  char* solution;
 };
 
 Question questions[] = {
-  { "Do you have a fever?", 1, 0, "Drink fluids, rest." },
-  { "Do you have a headache?", 1, 0, "Take pain relievers." },
-  { "Are you experiencing nausea?", 1, 0, "Stay hydrated." },
-  { "Do you feel unusually tired?", 1, 0, "Get more sleep." },
-  { "Do you feel tired?", 1, 0, "Eat nutritious food." },
-  { "Have you had a headache?", 1, 0, "Avoid screen time." },
-  { "Do you feel stressed?", 1, 0, "Practice meditation." },
-  { "Have you had a sore throat?", 1, 0, "Gargle warm salt water." },
-  { "Do you feel thirsty?", 1, 0, "Drink more water." },
-  { "Have you had muscle pain?", 1, 0, "Try light stretching." },
-  { "Do you struggle to sleep?", 1, 0, "Follow a sleep schedule." },
-  { "Have you felt dizzy?", 1, 0, "Sit down, breathe deeply." },
-  { "Do you feel bloated?", 1, 0, "Avoid heavy meals." },
-  { "Have you felt fatigued?", 1, 0, "Exercise regularly." },
+  { "Do you feel tired?", 1, 0, "Get more sleep, stay hydrated, and eat balanced meals." },
+  { "Have you had a headache?", 2, 0, "Drink water, rest in a dark room, and reduce screen time." },
+  { "Do you feel stressed?", 1, 0, "Take deep breaths, go for a walk, and try relaxation techniques." },
+  { "Have you had a sore throat?", 2, 0, "Drink warm liquids, gargle salt water, and rest your voice." },
+  { "Have you had muscle pain?", 2, 0, "Stretch, apply a warm compress, and rest your muscles." },
+  { "Do you have a fever?", 3, 0, "Rest, drink fluids, and take fever-reducing medicine if needed." },
+  { "Do you have a headache?", 2, 0, "Stay hydrated, rest in a quiet place, and reduce screen time." }
 };
 
 const int totalQuestions = sizeof(questions) / sizeof(questions[0]);
 
+bool solutionsNeeded[totalQuestions];
+
 void setup() {
+  Serial.begin(9600);
+  for (int n = 0; n < totalQuestions; n++) {
+    solutionsNeeded[n] = false;
+  }
   pinMode(yesButton, INPUT_PULLUP);
   pinMode(noButton, INPUT_PULLUP);
   pinMode(resetButton, INPUT_PULLUP);
@@ -77,7 +75,7 @@ void loop() {
       buttonBeep(100);
       delay(200);
       healthScore += questions[questionIndex].yesWeight;
-      solutions += "- " + questions[questionIndex].solution + "\n";
+      solutionsNeeded[questionIndex] = true;
       nextQuestion();
     } else if (digitalRead(noButton) == LOW) {
       buttonBeep(100);
@@ -99,43 +97,76 @@ void buttonBeep(int duration) {
   digitalWrite(buzzer, LOW);
 }
 
-void splitString(String text) {
+void splitString(char* text) {
   lcd.clear();
   int index = 0;
   
-  if (text.length() <= 16) {
+  // Find the length of the text manually
+  int textLength = 0;
+  while (text[textLength] != '\0') {
+    textLength++;
+  }
+
+  if (textLength <= 16) {
     lcd.setCursor(0, 0);
     lcd.print(text);
   } else {
-    int breakIndex1 = text.lastIndexOf(' ', 15);
+    // Find the first space before index 16 to break the string
+    int breakIndex1 = 15;
+    while (breakIndex1 >= 0 && text[breakIndex1] != ' ') {
+      breakIndex1--;
+    }
     if (breakIndex1 == -1) breakIndex1 = 16;
-    
+
+    // Print the first line
     lcd.setCursor(0, 0);
-    lcd.print(text.substring(0, breakIndex1));
-    
-    if (text.length() > breakIndex1) {
-      int breakIndex2 = text.lastIndexOf(' ', min(breakIndex1 + 17, text.length()));
-      if (breakIndex2 == -1 || breakIndex2 <= breakIndex1) 
-        breakIndex2 = breakIndex1 + 17;
-      
+    char line1[17]; // Make sure it's 17 to hold the null-terminator
+    strncpy(line1, text, breakIndex1);
+    line1[breakIndex1] = '\0'; // Null-terminate the string
+    lcd.print(line1);
+
+    if (textLength > breakIndex1) {
+      // Find the space before the next break point
+      int breakIndex2 = breakIndex1 + 16;
+      while (breakIndex2 < textLength && text[breakIndex2] != ' ') {
+        breakIndex2--;
+      }
+      if (breakIndex2 == breakIndex1 + 16) breakIndex2 = breakIndex1 + 16;
+
+      // Print the second line
       lcd.setCursor(0, 1);
-      lcd.print(text.substring(breakIndex1 + 1, min(breakIndex2, text.length())));
-      
-      if (breakIndex2 >= text.length()) return;
-      
-      delay(1000);
+      char line2[17];
+      strncpy(line2, text + breakIndex1 + 1, breakIndex2 - breakIndex1);
+      line2[breakIndex2 - breakIndex1] = '\0';
+      lcd.print(line2);
+
+      if (breakIndex2 >= textLength) return;
+
+      delay(2000);
       lcd.clear();
-      
-      if (text.length() > breakIndex2) {
-        int breakIndex3 = text.lastIndexOf(' ', min(breakIndex2 + 17, text.length()));
-        if (breakIndex3 == -1 || breakIndex3 <= breakIndex2) breakIndex3 = breakIndex2 + 17;
-        
+
+      if (textLength > breakIndex2) {
+        // Find the space before the third break point
+        int breakIndex3 = breakIndex2 + 16;
+        while (breakIndex3 < textLength && text[breakIndex3] != ' ') {
+          breakIndex3--;
+        }
+        if (breakIndex3 == breakIndex2 + 16) breakIndex3 = breakIndex2 + 16;
+
+        // Print the third line
         lcd.setCursor(0, 0);
-        lcd.print(text.substring(breakIndex2 + 1, min(breakIndex3, text.length())));
-        
-        if (text.length() > breakIndex3) {
+        char line3[17];
+        strncpy(line3, text + breakIndex2 + 1, breakIndex3 - breakIndex2);
+        line3[breakIndex3 - breakIndex2] = '\0';
+        lcd.print(line3);
+
+        if (textLength > breakIndex3) {
+          // Print the fourth line
           lcd.setCursor(0, 1);
-          lcd.print(text.substring(breakIndex3 + 1, min(breakIndex3 + 16, text.length())));
+          char line4[17];
+          strncpy(line4, text + breakIndex3 + 1, 16);
+          line4[16] = '\0';
+          lcd.print(line4);
         }
       }
     }
@@ -187,27 +218,37 @@ void displayResult() {
 }
 
 void displaySolutions() {
-  if (solutions.length() > 0) {
+  bool displayAdvice = false;
+
+  for (int n = 0; n < totalQuestions; n++)
+    if (solutionsNeeded[n]) {
+      displayAdvice = true;
+      break;
+    }
+
+  if (displayAdvice) {
     lcd.clear();
     lcd.print("Advice:");
     delay(2000);
 
-    int start = 0;
-    while (start < solutions.length()) {
-      lcd.clear();
-      splitString(solutions.substring(start, min(start + 32, solutions.length())));
-      start += 32;
-      delay(2500);
-    }
+    for (int n = 0; n < totalQuestions; n++)
+      if (solutionsNeeded[n]) {
+        lcd.clear();
+        splitString(questions[n].solution);
+        delay(3000);
+      }
   }
+
   resetTest();
 }
 
 void resetTest() {
+  for (int n = 0; n < totalQuestions; n++)
+    solutionsNeeded[n] = false;
+
   healthScore = 0;
   questionIndex = 0;
   startCheckup = false;
-  solutions = "";
 
   digitalWrite(whiteLED, LOW);
   digitalWrite(greenLED, LOW);
