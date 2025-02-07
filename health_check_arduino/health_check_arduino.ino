@@ -1,52 +1,44 @@
 #include <LiquidCrystal_I2C.h>
 
-// Initialize LCD (I2C Address: 0x27, 16 columns, 2 rows)
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-// LED Pins
-const int whiteLED = 5;    // Good: Everything is fine
-const int greenLED = 6;    // 1-2 severity
-const int orangeLED = 7;   // 3-4 severity
-const int redLED = 8;      // 5-6 severity
-
-// Buzzer Pin
+const int whiteLED = 5;
+const int greenLED = 6;
+const int orangeLED = 7;
+const int redLED = 8;
 const int buzzer = 9;
 
-int questionIndex = 0;
-bool startCheckup = false;
-int healthScore = 0;
-
-// Defining the Buttons
 const int yesButton = 4;
 const int noButton = 3;
 const int resetButton = 2;
 
-// Structure for questions with severity values
+int questionIndex = 0;
+bool startCheckup = false;
+int healthScore = 0;
+String solutions = "";
+
 struct Question {
   String text;
-  int yesWeight;  // Severity points added if Yes is pressed
-  int noWeight;   // Severity points added if No is pressed
+  int yesWeight;
+  int noWeight;
+  String solution;
 };
 
-// Define health questions
 Question questions[] = {
-
-  { "Do you have a fever?", 1, 0 },
-  { "Do you have a headache?", 1, 0 },
-  { "Are you experiencing nausea?", 1, 0 },
-          { "Do you feel unusually tired?", 1, 0 },
-
-          { "Do you feel tired?", 1, 0 },
-    { "Have you had a headache?", 1, 0 },
-    { "Do you feel stressed?", 1, 0 },
-    { "Have you had a sore throat?", 1, 0 },
-    { "Do you feel thirsty?", 1, 0 },
-    { "Have you had muscle pain?", 1, 0 },
-    { "Do you struggle to sleep?", 1, 0 },
-    { "Have you felt dizzy?", 1, 0 },
-    { "Do you feel bloated?", 1, 0 },
-    { "Have you felt fatigued?", 1, 0 },
-      
+  { "Do you have a fever?", 1, 0, "Drink fluids, rest." },
+  { "Do you have a headache?", 1, 0, "Take pain relievers." },
+  { "Are you experiencing nausea?", 1, 0, "Stay hydrated." },
+  { "Do you feel unusually tired?", 1, 0, "Get more sleep." },
+  { "Do you feel tired?", 1, 0, "Eat nutritious food." },
+  { "Have you had a headache?", 1, 0, "Avoid screen time." },
+  { "Do you feel stressed?", 1, 0, "Practice meditation." },
+  { "Have you had a sore throat?", 1, 0, "Gargle warm salt water." },
+  { "Do you feel thirsty?", 1, 0, "Drink more water." },
+  { "Have you had muscle pain?", 1, 0, "Try light stretching." },
+  { "Do you struggle to sleep?", 1, 0, "Follow a sleep schedule." },
+  { "Have you felt dizzy?", 1, 0, "Sit down, breathe deeply." },
+  { "Do you feel bloated?", 1, 0, "Avoid heavy meals." },
+  { "Have you felt fatigued?", 1, 0, "Exercise regularly." },
 };
 
 const int totalQuestions = sizeof(questions) / sizeof(questions[0]);
@@ -55,18 +47,11 @@ void setup() {
   pinMode(yesButton, INPUT_PULLUP);
   pinMode(noButton, INPUT_PULLUP);
   pinMode(resetButton, INPUT_PULLUP);
-
   pinMode(whiteLED, OUTPUT);
   pinMode(greenLED, OUTPUT);
   pinMode(orangeLED, OUTPUT);
   pinMode(redLED, OUTPUT);
   pinMode(buzzer, OUTPUT);
-  
-  digitalWrite(whiteLED, LOW);
-  digitalWrite(greenLED, LOW);
-  digitalWrite(orangeLED, LOW);
-  digitalWrite(redLED, LOW);
-  digitalWrite(buzzer, LOW);
 
   lcd.init();
   lcd.backlight();
@@ -77,9 +62,9 @@ void setup() {
 
 void loop() {
   if (!startCheckup) {
-    if (digitalRead(yesButton) == LOW) {  
+    if (digitalRead(yesButton) == LOW) {
       buttonBeep(100);
-      delay(200);  
+      delay(200);
       startCheckup = true;
       lcd.clear();
       askQuestion();
@@ -92,12 +77,11 @@ void loop() {
       buttonBeep(100);
       delay(200);
       healthScore += questions[questionIndex].yesWeight;
+      solutions += "- " + questions[questionIndex].solution + "\n";
       nextQuestion();
-    } 
-    else if (digitalRead(noButton) == LOW) {
+    } else if (digitalRead(noButton) == LOW) {
       buttonBeep(100);
       delay(200);
-      healthScore += questions[questionIndex].noWeight;
       nextQuestion();
     }
   }
@@ -109,12 +93,12 @@ void loop() {
   }
 }
 
-// Function to play a beep sound when a button is pressed
 void buttonBeep(int duration) {
   digitalWrite(buzzer, HIGH);
-  delay(duration);  
+  delay(duration);
   digitalWrite(buzzer, LOW);
 }
+
 void splitString(String text) {
   lcd.clear();
   int index = 0;
@@ -164,7 +148,6 @@ void askQuestion() {
     splitString(questions[questionIndex].text);
   } else {
     displayResult();
-    healthScore = 0;
   }
 }
 
@@ -181,38 +164,55 @@ void displayResult() {
   lcd.clear();
   lcd.print("Result:");
   lcd.setCursor(0, 1);
-
   digitalWrite(whiteLED, LOW);
   digitalWrite(greenLED, LOW);
   digitalWrite(orangeLED, LOW);
   digitalWrite(redLED, LOW);
 
-  if (healthScore <=1) {
+  if (healthScore <= 1) {
     lcd.print("Good Health");
     digitalWrite(whiteLED, HIGH);
-    delay(2000);
-  } else if (healthScore > 1 && healthScore <= 2) {
+  } else if (healthScore <= 2) {
     lcd.print("Take Rest");
     digitalWrite(greenLED, HIGH);
-  } else if (healthScore >= 3 && healthScore < 4) {
-    lcd.print("Take More Rest");
+  } else if (healthScore < 4) {
+    lcd.print("More Rest Needed");
     digitalWrite(orangeLED, HIGH);
-  } else if (healthScore >= 4) {
+  } else {
     lcd.print("See a Doctor!");
     digitalWrite(redLED, HIGH);
   }
+  delay(3000);
+  displaySolutions();
+}
+
+void displaySolutions() {
+  if (solutions.length() > 0) {
+    lcd.clear();
+    lcd.print("Advice:");
+    delay(2000);
+
+    int start = 0;
+    while (start < solutions.length()) {
+      lcd.clear();
+      splitString(solutions.substring(start, min(start + 32, solutions.length())));
+      start += 32;
+      delay(2500);
+    }
+  }
+  resetTest();
 }
 
 void resetTest() {
   healthScore = 0;
   questionIndex = 0;
   startCheckup = false;
+  solutions = "";
 
   digitalWrite(whiteLED, LOW);
   digitalWrite(greenLED, LOW);
   digitalWrite(orangeLED, LOW);
   digitalWrite(redLED, LOW);
-
   lcd.clear();
   lcd.print("Start General");
   lcd.setCursor(0, 1);
